@@ -13,7 +13,7 @@ struct MyData {
     pub color: Fill,
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 enum ColorParser {
     #[error("Missing leading '#' descriptor")]
     MissingPrefix,
@@ -211,5 +211,75 @@ mod tests {
             Color { red: 0, green: 255, blue: 0 },
             Color { red: 0, green: 0, blue: 255 },
         ]));
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_fails_with_random_string() {
+        let data = r##"
+            { "color": "hello" }
+        "##;
+
+        serde_json::from_str::<MyData>(data).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_fails_with_short_string() {
+        let data = r##"
+            { "color": "#f" }
+        "##;
+
+        serde_json::from_str::<MyData>(data).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_fails_with_long_string() {
+        let data = r##"
+            { "color": "#fffffffffffffff" }
+        "##;
+
+        serde_json::from_str::<MyData>(data).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_fails_with_gradient_rainbow() {
+        let data = r##"
+            { "color": ["rainbow"] }
+        "##;
+
+        serde_json::from_str::<MyData>(data).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_fails_with_gradient_random_string() {
+        let data = r##"
+            { "color": ["hello"] }
+        "##;
+
+        serde_json::from_str::<MyData>(data).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_fails_with_gradient_short_string() {
+        let data = r##"
+            { "color": ["#f"] }
+        "##;
+
+        serde_json::from_str::<MyData>(data).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn it_fails_with_gradient_long_string() {
+        let data = r##"
+            { "color": ["#fffffffffffffff"] }
+        "##;
+
+        serde_json::from_str::<MyData>(data).unwrap();
     }
 }
