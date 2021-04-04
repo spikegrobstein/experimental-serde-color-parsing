@@ -15,3 +15,13 @@ components into `u8` values to make it easier to work with.
 
 This doesn't handle re-encoding the data to json (yet)
 
+## Acknowledgements
+
+This code is a mix of source from the serde docs themselves + several stack overflow + serde github issue
+postings.
+
+The biggest help came from:
+
+ * https://github.com/serde-rs/serde/issues/1131
+ * https://serde.rs/string-or-struct.html
+
