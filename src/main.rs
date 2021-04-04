@@ -22,7 +22,7 @@ enum ColorParser {
     InvalidLength(usize),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 struct Color {
     pub red: u8,
     pub green: u8,
@@ -73,7 +73,7 @@ impl FromStr for Color {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 // #[serde(untagged)]
 enum Fill {
     Rainbow,
@@ -161,3 +161,55 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_parses_rainbow() {
+        let data = r##"
+            { "color": "rainbow" }
+        "##;
+
+        let v: MyData = serde_json::from_str(data).unwrap();
+
+        assert_eq!(v.color, Fill::Rainbow);
+    }
+
+    #[test]
+    fn it_parses_short_color() {
+        let data = r##"
+            { "color": "#f0f" }
+        "##;
+
+        let v: MyData = serde_json::from_str(data).unwrap();
+
+        assert_eq!(v.color, Fill::Color(Color { red: 255, green: 0, blue: 255 }));
+    }
+
+    #[test]
+    fn it_parses_long_color() {
+        let data = r##"
+            { "color": "#ff00ff" }
+        "##;
+
+        let v: MyData = serde_json::from_str(data).unwrap();
+
+        assert_eq!(v.color, Fill::Color(Color { red: 255, green: 0, blue: 255 }));
+    }
+
+    #[test]
+    fn it_parses_a_gradient() {
+        let data = r##"
+            { "color": [ "#fff", "#00ff00", "#00f" ] }
+        "##;
+
+        let v: MyData = serde_json::from_str(data).unwrap();
+
+        assert_eq!(v.color, Fill::Gradient(vec![
+            Color { red: 255, green: 255, blue: 255 },
+            Color { red: 0, green: 255, blue: 0 },
+            Color { red: 0, green: 0, blue: 255 },
+        ]));
+    }
+}
