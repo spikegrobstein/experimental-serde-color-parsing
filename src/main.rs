@@ -1,6 +1,8 @@
-use serde::{Deserialize, Deserializer};
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde_json::Result;
+use serde_json::json;
 use serde::de::{self, Visitor, SeqAccess};
+use serde::ser::{self, SerializeSeq};
 
 use std::str::FromStr;
 use std::marker::PhantomData;
@@ -8,7 +10,7 @@ use std::fmt;
 
 use thiserror::Error;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct MyData {
     pub color: Fill,
 }
@@ -28,6 +30,13 @@ struct Color {
     pub green: u8,
     pub blue: u8,
 }
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{:02x}{:02x}{:02x}", self.red, self.blue, self.green)
+    }
+}
+
 
 impl FromStr for Color {
     type Err = Box<dyn std::error::Error>;
@@ -147,9 +156,34 @@ impl<'de> Deserialize<'de> for Fill {
     }
 }
 
+impl Serialize for Fill
+{
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // serializer.serialize_str("foo")
+        
+        match self {
+            Fill::Rainbow => serializer.serialize_str("rainbow"),
+            Fill::Color(color) => {
+                serializer.serialize_str(&format!{"{}", color})
+            },
+            Fill::Gradient(colors) => {
+                let mut s = serializer.serialize_seq(Some(colors.len()))?;
+                for c in colors {
+                    s.serialize_element(&format!("{}", c))?;
+                }
+
+                s.end()
+            }
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let data = r##"
-        { "color": "#ffdd00" }
+        { "color": "rainbow" }
     "##;
 
     // Parse the string of data into serde_json::Value.
@@ -157,6 +191,10 @@ fn main() -> Result<()> {
 
     // Access parts of the data by indexing with square brackets.
     println!("color: {:?}", v.color);
+
+    let json = json!(v);
+
+    println!("json: {}", json);
 
     Ok(())
 }
