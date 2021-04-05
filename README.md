@@ -13,7 +13,7 @@ be:
 This uses an enum as the type of this value with an underlying `Color` type that breaks up the color
 components into `u8` values to make it easier to work with.
 
-This doesn't handle re-encoding the data to json (yet)
+This will also serialize the same data back to json. Includes tests.
 
 ## Acknowledgements
 

@@ -2,7 +2,7 @@ use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde_json::Result;
 use serde_json::json;
 use serde::de::{self, Visitor, SeqAccess};
-use serde::ser::{self, SerializeSeq};
+use serde::ser::SerializeSeq;
 
 use std::str::FromStr;
 use std::marker::PhantomData;
@@ -49,7 +49,6 @@ impl FromStr for Color {
         }
 
         let s = &s[1..];
-        eprintln!("parsing: {}", s);
 
         let (red, green, blue) =
             match len {
@@ -94,7 +93,6 @@ impl FromStr for Fill {
     type Err = Box<dyn std::error::Error>;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        eprintln!("calling fromstr: {}", s);
         let res = match s {
             "rainbow" => Fill::Rainbow,
             s => Fill::Color(Color::from_str(s)?),
@@ -203,149 +201,157 @@ fn main() -> Result<()> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn it_parses_rainbow() {
-        let data = r##"
-            { "color": "rainbow" }
-        "##;
+    mod deserialize {
+        use super::*;
 
-        let v: MyData = serde_json::from_str(data).unwrap();
+        #[test]
+        fn rainbow() {
+            let data = r##"
+                { "color": "rainbow" }
+            "##;
 
-        assert_eq!(v.color, Fill::Rainbow);
+            let v: MyData = serde_json::from_str(data).unwrap();
+
+            assert_eq!(v.color, Fill::Rainbow);
+        }
+
+        #[test]
+        fn short_color() {
+            let data = r##"
+                { "color": "#f0f" }
+            "##;
+
+            let v: MyData = serde_json::from_str(data).unwrap();
+
+            assert_eq!(v.color, Fill::Color(Color { red: 255, green: 0, blue: 255 }));
+        }
+
+        #[test]
+        fn long_color() {
+            let data = r##"
+                { "color": "#ff00ff" }
+            "##;
+
+            let v: MyData = serde_json::from_str(data).unwrap();
+
+            assert_eq!(v.color, Fill::Color(Color { red: 255, green: 0, blue: 255 }));
+        }
+
+        #[test]
+        fn gradient() {
+            let data = r##"
+                { "color": [ "#fff", "#00ff00", "#00f" ] }
+            "##;
+
+            let v: MyData = serde_json::from_str(data).unwrap();
+
+            assert_eq!(v.color, Fill::Gradient(vec![
+                Color { red: 255, green: 255, blue: 255 },
+                Color { red: 0, green: 255, blue: 0 },
+                Color { red: 0, green: 0, blue: 255 },
+            ]));
+        }
+
+        #[test]
+        #[should_panic]
+        fn arbitrary_string_fails() {
+            let data = r##"
+                { "color": "hello" }
+            "##;
+
+            serde_json::from_str::<MyData>(data).unwrap();
+        }
+
+        #[test]
+        #[should_panic]
+        fn short_string_fails() {
+            let data = r##"
+                { "color": "#f" }
+            "##;
+
+            serde_json::from_str::<MyData>(data).unwrap();
+        }
+
+        #[test]
+        #[should_panic]
+        fn too_long_of_string_fails() {
+            let data = r##"
+                { "color": "#fffffffffffffff" }
+            "##;
+
+            serde_json::from_str::<MyData>(data).unwrap();
+        }
+
+        #[test]
+        #[should_panic]
+        fn rainbow_in_gradient_fails() {
+            let data = r##"
+                { "color": ["rainbow"] }
+            "##;
+
+            serde_json::from_str::<MyData>(data).unwrap();
+        }
+
+        #[test]
+        #[should_panic]
+        fn arbitrary_string_in_gradient_fails() {
+            let data = r##"
+                { "color": ["hello"] }
+            "##;
+
+            serde_json::from_str::<MyData>(data).unwrap();
+        }
+
+        #[test]
+        #[should_panic]
+        fn short_string_in_gradient_fails() {
+            let data = r##"
+                { "color": ["#f"] }
+            "##;
+
+            serde_json::from_str::<MyData>(data).unwrap();
+        }
+
+        #[test]
+        #[should_panic]
+        fn long_string_in_gradient_fails() {
+            let data = r##"
+                { "color": ["#fffffffffffffff"] }
+            "##;
+
+            serde_json::from_str::<MyData>(data).unwrap();
+        }
     }
 
-    #[test]
-    fn it_parses_short_color() {
-        let data = r##"
-            { "color": "#f0f" }
-        "##;
+    mod ser {
+        use super::*;
 
-        let v: MyData = serde_json::from_str(data).unwrap();
+        #[test]
+        fn rainbow() {
+            let json = json!(MyData { color: Fill::Rainbow });
 
-        assert_eq!(v.color, Fill::Color(Color { red: 255, green: 0, blue: 255 }));
-    }
+            assert_eq!(json.to_string(), r##"{"color":"rainbow"}"##)
+        }
 
-    #[test]
-    fn it_parses_long_color() {
-        let data = r##"
-            { "color": "#ff00ff" }
-        "##;
+        #[test]
+        fn color() {
+            let json = json!(MyData { color: Fill::Color(Color { red: 255, green: 255, blue: 255 })});
 
-        let v: MyData = serde_json::from_str(data).unwrap();
+            assert_eq!(json.to_string(), r##"{"color":"#ffffff"}"##);
 
-        assert_eq!(v.color, Fill::Color(Color { red: 255, green: 0, blue: 255 }));
-    }
+            let json = json!(MyData { color: Fill::Color(Color { red: 15, green: 0, blue: 255 })});
 
-    #[test]
-    fn it_parses_a_gradient() {
-        let data = r##"
-            { "color": [ "#fff", "#00ff00", "#00f" ] }
-        "##;
+            assert_eq!(json.to_string(), r##"{"color":"#0f00ff"}"##)
+        }
 
-        let v: MyData = serde_json::from_str(data).unwrap();
+        #[test]
+        fn gradient() {
+            let json = json!(MyData { color: Fill::Gradient(vec![
+                Color { red: 255, green: 255, blue: 255 },
+                Color { red: 15, green: 0, blue: 255 },
+            ])});
 
-        assert_eq!(v.color, Fill::Gradient(vec![
-            Color { red: 255, green: 255, blue: 255 },
-            Color { red: 0, green: 255, blue: 0 },
-            Color { red: 0, green: 0, blue: 255 },
-        ]));
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_fails_with_random_string() {
-        let data = r##"
-            { "color": "hello" }
-        "##;
-
-        serde_json::from_str::<MyData>(data).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_fails_with_short_string() {
-        let data = r##"
-            { "color": "#f" }
-        "##;
-
-        serde_json::from_str::<MyData>(data).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_fails_with_long_string() {
-        let data = r##"
-            { "color": "#fffffffffffffff" }
-        "##;
-
-        serde_json::from_str::<MyData>(data).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_fails_with_gradient_rainbow() {
-        let data = r##"
-            { "color": ["rainbow"] }
-        "##;
-
-        serde_json::from_str::<MyData>(data).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_fails_with_gradient_random_string() {
-        let data = r##"
-            { "color": ["hello"] }
-        "##;
-
-        serde_json::from_str::<MyData>(data).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_fails_with_gradient_short_string() {
-        let data = r##"
-            { "color": ["#f"] }
-        "##;
-
-        serde_json::from_str::<MyData>(data).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn it_fails_with_gradient_long_string() {
-        let data = r##"
-            { "color": ["#fffffffffffffff"] }
-        "##;
-
-        serde_json::from_str::<MyData>(data).unwrap();
-    }
-
-    #[test]
-    fn it_should_serialize_rainbow() {
-        let json = json!(MyData { color: Fill::Rainbow });
-
-        assert_eq!(json.to_string(), r##"{"color":"rainbow"}"##)
-    }
-
-    #[test]
-    fn it_should_serialize_a_color() {
-        let json = json!(MyData { color: Fill::Color(Color { red: 255, green: 255, blue: 255 })});
-
-        assert_eq!(json.to_string(), r##"{"color":"#ffffff"}"##);
-
-        let json = json!(MyData { color: Fill::Color(Color { red: 15, green: 0, blue: 255 })});
-
-        assert_eq!(json.to_string(), r##"{"color":"#0f00ff"}"##)
-    }
-
-    #[test]
-    fn it_should_serialize_a_gradient() {
-        let json = json!(MyData { color: Fill::Gradient(vec![
-            Color { red: 255, green: 255, blue: 255 },
-            Color { red: 15, green: 0, blue: 255 },
-        ])});
-
-        assert_eq!(json.to_string(), r##"{"color":["#ffffff","#0f00ff"]}"##)
+            assert_eq!(json.to_string(), r##"{"color":["#ffffff","#0f00ff"]}"##)
+        }
     }
 }
