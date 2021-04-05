@@ -33,7 +33,7 @@ struct Color {
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "#{:02x}{:02x}{:02x}", self.red, self.blue, self.green)
+        write!(f, "#{:02x}{:02x}{:02x}", self.red, self.green, self.blue)
     }
 }
 
@@ -319,5 +319,33 @@ mod tests {
         "##;
 
         serde_json::from_str::<MyData>(data).unwrap();
+    }
+
+    #[test]
+    fn it_should_serialize_rainbow() {
+        let json = json!(MyData { color: Fill::Rainbow });
+
+        assert_eq!(json.to_string(), r##"{"color":"rainbow"}"##)
+    }
+
+    #[test]
+    fn it_should_serialize_a_color() {
+        let json = json!(MyData { color: Fill::Color(Color { red: 255, green: 255, blue: 255 })});
+
+        assert_eq!(json.to_string(), r##"{"color":"#ffffff"}"##);
+
+        let json = json!(MyData { color: Fill::Color(Color { red: 15, green: 0, blue: 255 })});
+
+        assert_eq!(json.to_string(), r##"{"color":"#0f00ff"}"##)
+    }
+
+    #[test]
+    fn it_should_serialize_a_gradient() {
+        let json = json!(MyData { color: Fill::Gradient(vec![
+            Color { red: 255, green: 255, blue: 255 },
+            Color { red: 15, green: 0, blue: 255 },
+        ])});
+
+        assert_eq!(json.to_string(), r##"{"color":["#ffffff","#0f00ff"]}"##)
     }
 }
