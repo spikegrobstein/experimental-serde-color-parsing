@@ -22,7 +22,7 @@ enum ColorParser {
     InvalidLength(usize),
 }
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 struct Color {
     pub red: u8,
     pub green: u8,
