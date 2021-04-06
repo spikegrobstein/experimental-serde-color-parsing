@@ -323,7 +323,7 @@ mod tests {
         }
     }
 
-    mod ser {
+    mod serialize {
         use super::*;
 
         #[test]
